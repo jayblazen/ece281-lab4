@@ -25,7 +25,13 @@ end top_basys3;
 architecture top_basys3_arch of top_basys3 is
 
     -- signal declarations
-    
+    signal w_fsm_reset : std_logic := '0';
+    signal w_clk_reset : std_logic := '0';
+    signal w_fsm_clk : std_logic := '0';
+    signal w_tdm_clk : std_logic := '0';
+    signal w_floor : std_logic_vector(3 downto 0) := "0010";
+    signal w_D3, w_D2, w_D1, w_D0, w_data : std_logic_vector (3 downto 0);
+    signal w_sel : std_logic_vector (3 downto 0);
   
 	-- component declarations
     component sevenseg_decoder is
@@ -44,6 +50,16 @@ architecture top_basys3_arch of top_basys3 is
             o_floor : out STD_LOGIC_VECTOR (3 downto 0)		   
 		 );
 	end component elevator_controller_fsm;
+	
+	component elevator_controller_fsm2 is
+		Port (
+            i_clk        : in  STD_LOGIC;
+            i_reset      : in  STD_LOGIC;
+            is_stopped   : in  STD_LOGIC;
+            go_up_down   : in  STD_LOGIC;
+            o_floor : out STD_LOGIC_VECTOR (3 downto 0)		   
+		 );
+	end component elevator_controller_fsm2;
 	
 	component TDM4 is
 		generic ( constant k_WIDTH : natural  := 4); -- bits in input and output
@@ -70,7 +86,48 @@ architecture top_basys3_arch of top_basys3 is
 	
 begin
 	-- PORT MAPS ----------------------------------------
-    	
+    SevenSegmentDisplayDecoder_uut: sevenseg_decoder
+        port map(
+                i_Hex => w_floor,
+                o_seg_n => seg
+                 );
+	
+	uut_inst : TDM4 
+         port map ( i_clk   => w_tdm_clk,
+                    i_reset => btnU,     
+                    i_D3    => w_D3,
+                    i_D2    => w_D2,
+                    i_D1    => w_D1,
+                    i_D0    => w_D0,
+                    o_data  => w_data,
+                    o_sel   => w_sel
+         );
+                     
+     elevator_inst : elevator_controller_fsm
+        port map (
+             i_clk     => w_fsm_clk,
+             i_reset   => w_fsm_reset,
+             is_stopped    => sw(0),
+             go_up_down => sw(1),
+             o_floor   => w_floor
+         );
+         
+     elevator_inst2 : elevator_controller_fsm2
+        port map (
+             i_clk     => w_fsm_clk,
+             i_reset   => w_fsm_reset,
+             is_stopped    => sw(14),
+             go_up_down => sw(15),
+             o_floor   => w_floor
+         );
+                                
+     clkdiv_inst : clock_divider 		--instantiation of clock_divider to take 
+         generic map ( k_DIV => 50000000 ) -- 1 Hz clock from 100 MHz
+         port map (             
+             i_clk   => clk,
+             i_reset => w_clk_reset,
+             o_clk   => w_fsm_clk
+         ); 
 	
 	-- CONCURRENT STATEMENTS ----------------------------
 	
@@ -79,5 +136,18 @@ begin
 	-- leave unused switches UNCONNECTED. Ignore any warnings this causes.
 	
 	-- reset signals
+	w_fsm_reset <= btnR or btnU;
+	w_clk_reset <= btnL or btnU;
+    
+    led(15) <= w_fsm_clk;
+    --led(14 downto 0) <= (others => '0');
+	-- leave unused switches UNCONNECTED. Ignore any warnings this causes.
+	an(2) <= '0';
+	
+	-- wire up active-low 7SD anodes (an) as required
+	-- Tie any unused anodes to power ('1') to keep them off
+	an(1 downto 0) <= (others => '1');
+	an(3) <= '1';
+	
 	
 end top_basys3_arch;
