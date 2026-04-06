@@ -92,6 +92,7 @@
       <Filter Type="Srcs"/>
       <File Path="$PPRDIR/src/TDM4.vhd">
         <FileInfo>
+          <Attr Name="AutoDisabled" Val="1"/>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
